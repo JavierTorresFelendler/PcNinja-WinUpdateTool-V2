@@ -686,17 +686,16 @@ function Invoke-PcnAppUpdateCheck {
         $packageUrl = [string](Get-PcnObjectProperty -InputObject $package -Name 'url')
         $packageFileName = [string](Get-PcnObjectProperty -InputObject $package -Name 'fileName')
         $packageSha256 = [string](Get-PcnObjectProperty -InputObject $package -Name 'sha256')
+        $metadata = Test-PcnAppUpdatePackageMetadata -FileName $packageFileName -Sha256 $packageSha256 -PackageType $PackageType
 
         if (-not (Test-PcnHttpsUrl -Url $packageUrl)) {
             $errors.Add("$PackageType package URL must use HTTPS.") | Out-Null
         }
 
-        if ([string]::IsNullOrWhiteSpace($packageFileName)) {
-            $errors.Add("$PackageType package fileName is missing.") | Out-Null
-        }
-
-        if ([string]::IsNullOrWhiteSpace($packageSha256)) {
-            $errors.Add("$PackageType package SHA256 is missing.") | Out-Null
+        if (-not $metadata.IsValid) {
+            foreach ($metadataError in $metadata.Errors) {
+                $errors.Add($metadataError) | Out-Null
+            }
         }
     }
 
@@ -798,24 +797,36 @@ function Invoke-PcnAppUpdateDownload {
         }
     }
 
-    Invoke-WebRequest -Uri $packageUrl -UseBasicParsing -OutFile $targetPath
-    $actualHash = (Get-FileHash -LiteralPath $targetPath -Algorithm SHA256).Hash.ToUpperInvariant()
-    $hashMatches = ($actualHash -eq $expectedHash)
-    $signature = Get-AuthenticodeSignature -LiteralPath $targetPath
+    $temporaryPath = '{0}.{1}.{2}.download' -f $targetPath, $PID, [guid]::NewGuid().ToString('N')
+    try {
+        Invoke-WebRequest -Uri $packageUrl -UseBasicParsing -OutFile $temporaryPath
+        $actualHash = (Get-FileHash -LiteralPath $temporaryPath -Algorithm SHA256).Hash.ToUpperInvariant()
+        $hashMatches = ($actualHash -eq $expectedHash)
+        $signature = Get-AuthenticodeSignature -LiteralPath $temporaryPath
 
-    Write-PcnWinUpdateLog -Message "App update downloaded: $fileName. SHA256 match: $hashMatches. Signature: $($signature.Status)." -EventID 1090
+        if ($hashMatches) {
+            Move-PcnFileAtomic -SourcePath $temporaryPath -DestinationPath $targetPath
+        }
 
-    [pscustomobject]@{
-        Result = if ($hashMatches) { 'DownloadedAndVerified' } else { 'HashMismatch' }
-        Success = $hashMatches
-        Mode = 'AppUpdateDownload'
-        PackageType = $PackageType
-        FilePath = $targetPath
-        ExpectedSha256 = $expectedHash
-        ActualSha256 = $actualHash
-        SignatureStatus = [string]$signature.Status
-        Check = $check
-        Timestamp = (Get-Date).ToString('s')
+        Write-PcnWinUpdateLog -Message "App update downloaded: $fileName. SHA256 match: $hashMatches. Signature: $($signature.Status)." -EventID 1090
+
+        [pscustomobject]@{
+            Result = if ($hashMatches) { 'DownloadedAndVerified' } else { 'HashMismatch' }
+            Success = $hashMatches
+            Mode = 'AppUpdateDownload'
+            PackageType = $PackageType
+            FilePath = if ($hashMatches) { $targetPath } else { $null }
+            ExpectedSha256 = $expectedHash
+            ActualSha256 = $actualHash
+            SignatureStatus = [string]$signature.Status
+            Check = $check
+            Timestamp = (Get-Date).ToString('s')
+        }
+    }
+    finally {
+        if ([System.IO.File]::Exists($temporaryPath)) {
+            [System.IO.File]::Delete($temporaryPath)
+        }
     }
 }
 
@@ -4675,4 +4686,3 @@ catch {
 
     exit 1
 }
-

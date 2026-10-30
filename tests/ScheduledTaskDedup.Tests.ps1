@@ -55,3 +55,57 @@ Describe 'PcNinja scheduled task replacement' {
         }
     }
 }
+
+Describe 'PcNinja app update package metadata' {
+    InModuleScope WinUpdateCore {
+        It 'accepts package filenames and SHA256 hashes in the expected format' {
+            $result = Test-PcnAppUpdatePackageMetadata `
+                -FileName 'WinUpdate.Tool.by.PcNinja.msi' `
+                -Sha256 ('A' * 64) `
+                -PackageType Msi
+
+            $result.IsValid | Should Be $true
+            $result.Errors.Count | Should Be 0
+        }
+
+        It 'rejects path traversal and malformed hashes' {
+            $result = Test-PcnAppUpdatePackageMetadata `
+                -FileName '..\outside.msi' `
+                -Sha256 'not-a-hash' `
+                -PackageType Msi
+
+            $result.IsValid | Should Be $false
+            $result.Errors.Count | Should Be 2
+        }
+
+        It 'rejects a package with the wrong extension' {
+            $result = Test-PcnAppUpdatePackageMetadata `
+                -FileName 'unexpected.exe' `
+                -Sha256 ('0' * 64) `
+                -PackageType Msi
+
+            $result.IsValid | Should Be $false
+            $result.Errors.Count | Should Be 1
+        }
+    }
+}
+
+Describe 'PcNinja atomic JSON persistence' {
+    InModuleScope WinUpdateCore {
+        It 'replaces a JSON file without leaving a temporary file' {
+            $path = Join-Path ([System.IO.Path]::GetTempPath()) ("pcninja-state-{0}.json" -f [guid]::NewGuid().ToString('N'))
+            try {
+                Write-PcnJsonFileAtomic -Path $path -InputObject ([pscustomobject]@{ Result = 'Old' })
+                Write-PcnJsonFileAtomic -Path $path -InputObject ([pscustomobject]@{ Result = 'New' })
+
+                $saved = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
+                $saved.Result | Should Be 'New'
+                @(Get-ChildItem -LiteralPath (Split-Path -Parent $path) -Filter ((Split-Path -Leaf $path) + '.*.tmp')).Count | Should Be 0
+                @(Get-ChildItem -LiteralPath (Split-Path -Parent $path) -Filter ((Split-Path -Leaf $path) + '.*.bak')).Count | Should Be 0
+            }
+            finally {
+                Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
+}
