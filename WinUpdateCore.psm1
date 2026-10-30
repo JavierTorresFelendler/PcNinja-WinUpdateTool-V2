@@ -45,6 +45,100 @@ function Get-PcnWinUpdatePaths {
     }
 }
 
+function Test-PcnAppUpdatePackageMetadata {
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
+        [string]$FileName,
+
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
+        [string]$Sha256,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('Msi', 'Portable')]
+        [string]$PackageType
+    )
+
+    $errors = New-Object System.Collections.Generic.List[string]
+    $expectedExtension = if ($PackageType -eq 'Msi') { '.msi' } else { '.exe' }
+    $invalidFileName = [string]::IsNullOrWhiteSpace($FileName) -or
+        $FileName -in @('.', '..') -or
+        [System.IO.Path]::IsPathRooted($FileName) -or
+        -not [string]::Equals([System.IO.Path]::GetFileName($FileName), $FileName, [System.StringComparison]::Ordinal) -or
+        ($FileName.IndexOfAny([System.IO.Path]::GetInvalidFileNameChars()) -ge 0) -or
+        ($FileName -match '[\. ]$') -or
+        ($FileName -match '^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)')
+
+    if ($invalidFileName) {
+        $errors.Add("$PackageType package fileName must be a safe file name without a path.") | Out-Null
+    }
+    elseif (-not [string]::Equals([System.IO.Path]::GetExtension($FileName), $expectedExtension, [System.StringComparison]::OrdinalIgnoreCase)) {
+        $errors.Add("$PackageType package fileName must use the $expectedExtension extension.") | Out-Null
+    }
+
+    if ($Sha256 -notmatch '^[A-Fa-f0-9]{64}$') {
+        $errors.Add("$PackageType package SHA256 must contain exactly 64 hexadecimal characters.") | Out-Null
+    }
+
+    [pscustomobject]@{
+        IsValid = ($errors.Count -eq 0)
+        Errors = @($errors)
+    }
+}
+
+function Write-PcnJsonFileAtomic {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+
+        [Parameter(Mandatory = $true)]
+        [object]$InputObject,
+
+        [int]$Depth = 4
+    )
+
+    $fullPath = [System.IO.Path]::GetFullPath($Path)
+    $temporaryPath = '{0}.{1}.{2}.tmp' -f $fullPath, $PID, [guid]::NewGuid().ToString('N')
+    $json = ConvertTo-Json -InputObject $InputObject -Depth $Depth
+    $encoding = New-Object System.Text.UTF8Encoding($true)
+
+    try {
+        [System.IO.File]::WriteAllText($temporaryPath, $json, $encoding)
+        Move-PcnFileAtomic -SourcePath $temporaryPath -DestinationPath $fullPath
+    }
+    finally {
+        if ([System.IO.File]::Exists($temporaryPath)) {
+            [System.IO.File]::Delete($temporaryPath)
+        }
+    }
+}
+
+function Move-PcnFileAtomic {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SourcePath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$DestinationPath
+    )
+
+    $backupPath = '{0}.{1}.{2}.bak' -f $DestinationPath, $PID, [guid]::NewGuid().ToString('N')
+    try {
+        if ([System.IO.File]::Exists($DestinationPath)) {
+            [System.IO.File]::Replace($SourcePath, $DestinationPath, $backupPath)
+        }
+        else {
+            [System.IO.File]::Move($SourcePath, $DestinationPath)
+        }
+    }
+    finally {
+        if ([System.IO.File]::Exists($backupPath)) {
+            [System.IO.File]::Delete($backupPath)
+        }
+    }
+}
+
 function Initialize-PcnWinUpdateFolders {
     $paths = Get-PcnWinUpdatePaths
 
@@ -1154,7 +1248,7 @@ function Save-PcnWinUpdateConfig {
 
     $paths = Initialize-PcnWinUpdateFolders
     $Config.LastSaved = (Get-Date).ToString('s')
-    $Config | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $paths.ConfigFile -Encoding UTF8
+    Write-PcnJsonFileAtomic -Path $paths.ConfigFile -InputObject $Config -Depth 4
     Write-PcnWinUpdateLog -Message 'Configuration saved.' -EventID 1041
 }
 
@@ -1215,7 +1309,7 @@ function Save-PcnWinUpdateState {
     )
 
     $paths = Initialize-PcnWinUpdateFolders
-    $State | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $paths.StateFile -Encoding UTF8
+    Write-PcnJsonFileAtomic -Path $paths.StateFile -InputObject $State -Depth 4
 }
 
 function Get-PcnDateOrNull {
@@ -3465,6 +3559,8 @@ Export-ModuleMember -Function `
     Set-PcnConsoleLogEnabled, `
     Test-PcnAdministrator, `
     Get-PcnWinUpdatePaths, `
+    Test-PcnAppUpdatePackageMetadata, `
+    Move-PcnFileAtomic, `
     Initialize-PcnWinUpdateFolders, `
     Get-PcnPowershellPath, `
     Convert-PcnExceptionMessage, `
@@ -3517,5 +3613,3 @@ Export-ModuleMember -Function `
     Get-PcnRecentLog, `
     Start-PcnWindowsUpdateInstall, `
     Invoke-PcnManagedWindowsUpdateRun
-
-
