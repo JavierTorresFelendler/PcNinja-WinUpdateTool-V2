@@ -16,14 +16,14 @@ using System.Windows.Forms;
 [assembly: AssemblyCompany("PcNinja")]
 [assembly: AssemblyProduct("PcNinja WinUpdate Tool")]
 [assembly: AssemblyCopyright("Copyright (c) PcNinja")]
-[assembly: AssemblyVersion("2.2.5.2")]
-[assembly: AssemblyFileVersion("2.2.5.2")]
-[assembly: AssemblyInformationalVersion("V2.2.5")]
+[assembly: AssemblyVersion("2.2.6.0")]
+[assembly: AssemblyFileVersion("2.2.6.0")]
+[assembly: AssemblyInformationalVersion("V2.2.6")]
 
 internal static class PortableLauncher
 {
-    private const string Version = "2.2.5.2";
-    private const string PublicLabel = "V2.2.5";
+    private const string Version = "2.2.6.0";
+    private const string PublicLabel = "V2.2.6";
     private const string AppUserModelId = "PcNinja.WinUpdateTool";
     private const uint AttachParentProcess = 0xFFFFFFFF;
 

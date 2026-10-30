@@ -1,4 +1,4 @@
-﻿PcNinja WinUpdate Tool V2.2.5 Public Release
+﻿PcNinja WinUpdate Tool V2.2.6 Public Release
 
 Files:
 - WinUpdate.Tool.by.PcNinja.msi

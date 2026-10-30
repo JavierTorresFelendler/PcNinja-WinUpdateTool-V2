@@ -1,6 +1,6 @@
-﻿# PcNinja WinUpdate Tool V2.2.5-RC2
+# PcNinja WinUpdate Tool V2.2.6
 
-V2.2.5 keeps the approved laptop-ninja branding, replaces the Portable self-extract-and-launch chain with a quieter in-process host, suppresses non-GUI console windows during launch, update checks, installation maintenance, and cleanup, and standardizes the public download filenames.
+V2.2.6 keeps the approved laptop-ninja branding, hardens app-update package validation and verified downloads, and saves configuration and run-state data atomically. It includes the V2.2.5 improvements: an in-process Portable host, quieter background operations, and standardized public download filenames.
 
 The Windows Update engine, driver audit behavior, interactive MSI wizard, portable packaging, and branded host behavior remain based on the V2 recovery work.
 
@@ -10,6 +10,12 @@ The Windows Update engine, driver audit behavior, interactive MSI wizard, portab
 - V1 legacy repository: https://github.com/JavierTorresFelendler/PcNinja-WinUpdateTool-V1
 
 Use the V1 repository for the stable V1 download line. Use this repository for V2 stable releases and V2 release candidates.
+
+## New In V2.2.6
+
+- Validates update package filenames, file extensions, and SHA-256 hashes before downloading.
+- Downloads updates to temporary files and replaces existing packages only after hash verification.
+- Writes configuration and run-state JSON atomically to protect against interrupted writes.
 
 ## New In V2.2.5
 
@@ -847,7 +853,6 @@ The app displays:
 ```text
 wWw.PcNinja.Pro
 ```
-
 
 
 
