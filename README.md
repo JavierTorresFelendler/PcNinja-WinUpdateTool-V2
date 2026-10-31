@@ -1,6 +1,6 @@
-# PcNinja WinUpdate Tool V2.2.6
+# PcNinja WinUpdate Tool V2.2.7
 
-V2.2.6 keeps the approved laptop-ninja branding, hardens app-update package validation and verified downloads, and saves configuration and run-state data atomically. It includes the V2.2.5 improvements: an in-process Portable host, quieter background operations, and standardized public download filenames.
+V2.2.7 fixes Unicode decoding across the update scan process so Hebrew and other non-ASCII update titles remain readable in the Available Updates window and application logs. It retains the V2.2.6 app-update validation, verified downloads, and atomic configuration/state writes.
 
 The Windows Update engine, driver audit behavior, interactive MSI wizard, portable packaging, and branded host behavior remain based on the V2 recovery work.
 
@@ -10,6 +10,12 @@ The Windows Update engine, driver audit behavior, interactive MSI wizard, portab
 - V1 legacy repository: https://github.com/JavierTorresFelendler/PcNinja-WinUpdateTool-V1
 
 Use the V1 repository for the stable V1 download line. Use this repository for V2 stable releases and V2 release candidates.
+
+## New In V2.2.7
+
+- Fixes Hebrew and other non-ASCII update titles displaying as mojibake in the Available Updates window and application logs.
+- Sets PowerShell console and pipeline output to UTF-8, captures subprocess stdout/stderr with UTF-8 decoders, and reads captured files as UTF-8.
+- Adds regression tests for UTF-8 text with Hebrew, Arabic, Japanese, and accented Latin characters.
 
 ## New In V2.2.6
 
@@ -853,7 +859,6 @@ The app displays:
 ```text
 wWw.PcNinja.Pro
 ```
-
 
 
 

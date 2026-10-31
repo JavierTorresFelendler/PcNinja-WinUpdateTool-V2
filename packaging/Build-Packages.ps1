@@ -32,11 +32,11 @@ if (Test-Path -LiteralPath $versionFile -PathType Leaf) {
 }
 
 if (-not $Version) {
-    $Version = '2.2.6.0'
+    $Version = '2.2.7.0'
 }
 
 if (-not $PublicLabel) {
-    $PublicLabel = 'V2.2.6'
+    $PublicLabel = 'V2.2.7'
 }
 
 if (-not $Repository) {
@@ -548,11 +548,15 @@ Set-Content -LiteralPath (Join-Path $publicReleaseDir "$PublicLabel-RELEASE-NOTE
     $(if ($PublicLabel -match '-RC') { 'Release candidate for the V2 line.' } else { 'Official stable release of the V2 line.' }),
     '',
     'Highlights:',
+    '- Fixes Hebrew and other non-ASCII update titles displaying as mojibake in the Available Updates window and application logs.',
+    '- Uses explicit UTF-8 encoding for both PowerShell subprocess output and the UI readers that capture it.',
+    '',
+    'Previous V2.2.6 improvements:',
     '- Validates update package filenames, extensions, and SHA256 hashes before accepting an update manifest.',
     '- Downloads app updates to a temporary file and publishes them only after hash verification.',
     '- Saves configuration and run-state JSON through atomic file replacement to avoid partial files.',
     '',
-    'Previous V2.2.5 improvements:',
+    'Earlier V2.2.5 improvements:',
     '- Rebuilds the Portable EXE as a Windows GUI host that runs the PowerShell payload in-process instead of extracting and executing embedded EXE files.',
     '- Fixes the Portable UI launch after UAC by running the in-process PowerShell GUI in an explicit STA runspace and recording bootstrap failures in the portable runtime Logs folder.',
     '- Fixes normal Portable double-click launches by allowing the elevated WinForms process to open with a visible normal window instead of inheriting a hidden startup state.',

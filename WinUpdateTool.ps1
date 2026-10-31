@@ -111,8 +111,8 @@ Set-PcnUtf8ConsoleEncoding
 function Get-PcnToolVersionInfo {
     $defaultInfo = [pscustomobject]@{
         ProductName = 'PcNinja WinUpdate Tool'
-        PublicLabel = 'V2.2.6'
-        Version = '2.2.6.0'
+        PublicLabel = 'V2.2.7'
+        Version = '2.2.7.0'
         ReleaseChannel = 'stable'
         GitHubRepository = 'JavierTorresFelendler/PcNinja-WinUpdateTool-V2'
     }
