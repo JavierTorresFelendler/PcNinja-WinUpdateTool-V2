@@ -109,3 +109,22 @@ Describe 'PcNinja atomic JSON persistence' {
         }
     }
 }
+
+Describe 'PcNinja UTF-8 text files' {
+    InModuleScope WinUpdateCore {
+        It 'reads Unicode text from UTF-8 files without a byte order mark' {
+            $path = Join-Path ([System.IO.Path]::GetTempPath()) ("pcninja-utf8-{0}.txt" -f [guid]::NewGuid().ToString('N'))
+            $expected = [System.Text.RegularExpressions.Regex]::Unescape('\u05E2\u05D1\u05E8\u05D9\u05EA | \u0627\u0644\u0639\u0631\u0628\u064A\u0629 | \u65E5\u672C\u8A9E | Fran\u00E7ais')
+            try {
+                [System.IO.File]::WriteAllText($path, $expected, (New-Object System.Text.UTF8Encoding($false)))
+
+                $actual = Read-PcnUtf8File -Path $path
+
+                $actual | Should Be $expected
+            }
+            finally {
+                Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
+}
