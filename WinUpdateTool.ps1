@@ -106,6 +106,7 @@ if ($Json) {
 
 $modulePath = Join-Path $PSScriptRoot 'WinUpdateCore.psm1'
 Import-Module $modulePath -Force
+Set-PcnUtf8ConsoleEncoding
 
 function Get-PcnToolVersionInfo {
     $defaultInfo = [pscustomobject]@{

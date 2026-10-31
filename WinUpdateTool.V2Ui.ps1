@@ -660,10 +660,12 @@ public static class PcnWinUpdateTaskbarIdentity
 
         if (-not [string]::IsNullOrWhiteSpace($OutputPath)) {
             $startInfo.RedirectStandardOutput = $true
+            $startInfo.StandardOutputEncoding = New-Object System.Text.UTF8Encoding($false)
         }
 
         if (-not [string]::IsNullOrWhiteSpace($ErrorPath)) {
             $startInfo.RedirectStandardError = $true
+            $startInfo.StandardErrorEncoding = New-Object System.Text.UTF8Encoding($false)
         }
 
         $process = New-Object System.Diagnostics.Process

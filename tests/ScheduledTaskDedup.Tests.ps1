@@ -112,6 +112,21 @@ Describe 'PcNinja atomic JSON persistence' {
 
 Describe 'PcNinja UTF-8 text files' {
     InModuleScope WinUpdateCore {
+        It 'sets PowerShell console and pipeline output encoding to UTF-8' {
+            $originalConsoleEncoding = [Console]::OutputEncoding
+            $originalOutputEncoding = $OutputEncoding
+            try {
+                Set-PcnUtf8ConsoleEncoding
+
+                [Console]::OutputEncoding.WebName | Should Be 'utf-8'
+                $OutputEncoding.WebName | Should Be 'utf-8'
+            }
+            finally {
+                [Console]::OutputEncoding = $originalConsoleEncoding
+                $global:OutputEncoding = $originalOutputEncoding
+            }
+        }
+
         It 'reads Unicode text from UTF-8 files without a byte order mark' {
             $path = Join-Path ([System.IO.Path]::GetTempPath()) ("pcninja-utf8-{0}.txt" -f [guid]::NewGuid().ToString('N'))
             $expected = [System.Text.RegularExpressions.Regex]::Unescape('\u05E2\u05D1\u05E8\u05D9\u05EA | \u0627\u0644\u0639\u0631\u0628\u064A\u0629 | \u65E5\u672C\u8A9E | Fran\u00E7ais')

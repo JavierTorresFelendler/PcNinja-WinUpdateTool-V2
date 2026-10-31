@@ -155,6 +155,12 @@ function Get-PcnPowershellPath {
     return Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
 }
 
+function Set-PcnUtf8ConsoleEncoding {
+    $utf8 = New-Object System.Text.UTF8Encoding($false)
+    [Console]::OutputEncoding = $utf8
+    $global:OutputEncoding = $utf8
+}
+
 function Read-PcnUtf8File {
     param(
         [Parameter(Mandatory = $true)]
@@ -3572,6 +3578,7 @@ Export-ModuleMember -Function `
     Move-PcnFileAtomic, `
     Initialize-PcnWinUpdateFolders, `
     Get-PcnPowershellPath, `
+    Set-PcnUtf8ConsoleEncoding, `
     Read-PcnUtf8File, `
     Convert-PcnExceptionMessage, `
     Convert-PcnUpdateKbList, `
