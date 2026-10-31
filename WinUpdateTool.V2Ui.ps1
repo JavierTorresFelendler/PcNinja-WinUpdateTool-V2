@@ -660,10 +660,12 @@ public static class PcnWinUpdateTaskbarIdentity
 
         if (-not [string]::IsNullOrWhiteSpace($OutputPath)) {
             $startInfo.RedirectStandardOutput = $true
+            $startInfo.StandardOutputEncoding = New-Object System.Text.UTF8Encoding($false)
         }
 
         if (-not [string]::IsNullOrWhiteSpace($ErrorPath)) {
             $startInfo.RedirectStandardError = $true
+            $startInfo.StandardErrorEncoding = New-Object System.Text.UTF8Encoding($false)
         }
 
         $process = New-Object System.Diagnostics.Process
@@ -2639,13 +2641,13 @@ Remove-Item -LiteralPath $PSCommandPath -Force -ErrorAction SilentlyContinue
             Complete-V2HiddenProcessCapture -Process $uiState.ScanProcess
             $raw = ''
             if ($uiState.ScanOutPath -and (Test-Path -LiteralPath $uiState.ScanOutPath -PathType Leaf)) {
-                $raw = Get-Content -LiteralPath $uiState.ScanOutPath -Raw -ErrorAction Stop
+                $raw = Read-PcnUtf8File -Path $uiState.ScanOutPath
             }
 
             if ([string]::IsNullOrWhiteSpace($raw)) {
                 $stderr = ''
                 if ($uiState.ScanErrPath -and (Test-Path -LiteralPath $uiState.ScanErrPath -PathType Leaf)) {
-                    $stderr = Get-Content -LiteralPath $uiState.ScanErrPath -Raw -ErrorAction SilentlyContinue
+                    $stderr = Read-PcnUtf8File -Path $uiState.ScanErrPath
                 }
 
                 throw "Preview scan did not return JSON. $stderr"
@@ -2888,13 +2890,13 @@ Remove-Item -LiteralPath $PSCommandPath -Force -ErrorAction SilentlyContinue
             Complete-V2HiddenProcessCapture -Process $uiState.ToolUpdateCheckProcess
             $raw = ''
             if ($uiState.ToolUpdateOutPath -and (Test-Path -LiteralPath $uiState.ToolUpdateOutPath -PathType Leaf)) {
-                $raw = Get-Content -LiteralPath $uiState.ToolUpdateOutPath -Raw -ErrorAction Stop
+                $raw = Read-PcnUtf8File -Path $uiState.ToolUpdateOutPath
             }
 
             if ([string]::IsNullOrWhiteSpace($raw)) {
                 $stderr = ''
                 if ($uiState.ToolUpdateErrPath -and (Test-Path -LiteralPath $uiState.ToolUpdateErrPath -PathType Leaf)) {
-                    $stderr = Get-Content -LiteralPath $uiState.ToolUpdateErrPath -Raw -ErrorAction SilentlyContinue
+                    $stderr = Read-PcnUtf8File -Path $uiState.ToolUpdateErrPath
                 }
 
                 throw "Tool update check did not return JSON. $stderr"

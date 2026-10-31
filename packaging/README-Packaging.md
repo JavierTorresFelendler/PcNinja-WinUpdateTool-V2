@@ -1,9 +1,9 @@
 ﻿# PcNinja WinUpdate Tool Packaging
 
-RC20 produces two product deliverables from the same app files:
+The packaging script produces two product deliverables using the version in `version.json`:
 
-- `PcNinja-WinUpdateTool-Setup-1.1.2.0-x64.msi`
-- `PcNinja-WinUpdateTool-Portable-1.1.2.0.exe`
+- `dist\PcNinja-WinUpdateTool-Setup-<version>-x64.msi`
+- `dist\PcNinja-WinUpdateTool-Portable-<version>.exe`
 
 Build command:
 
@@ -25,10 +25,9 @@ The MSI can be deployed silently with `msiexec /qn` and can apply post-install c
 
 JSON-based MSI deployment is not included in RC20.
 
-The portable EXE is a small .NET Framework launcher with the app payload embedded as a zip resource. It always extracts under `%LOCALAPPDATA%\PcNinja\WinUpdateTool\Portable\1.1.2.0`. With no arguments it launches `PcNinja.WinUpdateTool.exe`; with arguments it forwards them to `PcNinja.WinUpdateTool.Cli.exe`.
+The portable EXE is a small .NET Framework launcher with the app scripts and assets embedded as named resources. It extracts under `%LOCALAPPDATA%\PcNinja\WinUpdateTool\Portable\<version>`. With no arguments it launches `PcNinja.WinUpdateTool.exe`; with arguments it forwards them to `PcNinja.WinUpdateTool.Cli.exe`.
 
 Deployment examples are generated under `dist\deployment-examples`.
-
 
 
 
