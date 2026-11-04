@@ -11,6 +11,7 @@ using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Text;
 using System.Windows.Forms;
+using PcNinja.Shared;
 
 [assembly: AssemblyTitle("PcNinja WinUpdate Tool Portable")]
 [assembly: AssemblyCompany("PcNinja")]
@@ -22,6 +23,9 @@ using System.Windows.Forms;
 
 internal static class PortableLauncher
 {
+    // Fixed shared single-instance id (same as the installed host). Never version it.
+    private const string SingleInstanceAppId = "WinUpdateTool";
+
     private const string Version = "2.2.7.0";
     private const string PublicLabel = "V2.2.7";
     private const string AppUserModelId = "PcNinja.WinUpdateTool";
@@ -62,6 +66,7 @@ internal static class PortableLauncher
     {
         bool uiRequest = IsUiRequest(args);
         bool hasConsole = TryAttachParentConsole();
+        PcNinjaSingleInstance singleInstance = null;
 
         try
         {
@@ -82,10 +87,30 @@ internal static class PortableLauncher
                 return 0;
             }
 
+            // The GUI is single-instance per Windows session: a second launch focuses
+            // the running window (checked before UAC, so no needless elevation prompt).
+            if (uiRequest && !IsAdministrator() && PcNinjaSingleInstance.TryActivateExisting(SingleInstanceAppId))
+            {
+                WriteBootstrapLog("Another UI instance is running; it was brought to the foreground.");
+                return 0;
+            }
+
             if (uiRequest && !IsAdministrator())
             {
                 WriteBootstrapLog("Requesting elevation for the portable UI.");
                 return RelaunchElevated(args);
+            }
+
+            // Take ownership before extraction so a second UI never overwrites
+            // runtime files that the running instance is using.
+            if (uiRequest)
+            {
+                singleInstance = PcNinjaSingleInstance.Acquire(SingleInstanceAppId);
+                if (singleInstance == null)
+                {
+                    WriteBootstrapLog("Another UI instance is running; it was brought to the foreground.");
+                    return 0;
+                }
             }
 
             string extractRoot = GetExtractRoot();
@@ -121,6 +146,13 @@ internal static class PortableLauncher
             }
 
             return 1;
+        }
+        finally
+        {
+            if (singleInstance != null)
+            {
+                singleInstance.Dispose();
+            }
         }
     }
 

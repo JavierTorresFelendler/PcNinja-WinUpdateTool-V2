@@ -1635,9 +1635,67 @@ if ($Mode -in @('DriverReport', 'DriverAudit')) {
     }
 }
 
+# Shared PcNinja single-instance guard (shared\PcNinjaSingleInstance.cs).
+# The EXE hosts compile it in and already own the guard; these helpers cover
+# direct WinUpdateTool.ps1 / VBS launches. Any failure here fails open.
+$script:PcnSingleInstanceAppId = 'WinUpdateTool'
+$script:PcnSingleInstance = $null
+
+function Initialize-PcnSingleInstanceType {
+    if ('PcNinja.Shared.PcNinjaSingleInstance' -as [type]) {
+        return $true
+    }
+
+    $source = Join-Path $PSScriptRoot 'shared\PcNinjaSingleInstance.cs'
+    if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
+        return $false
+    }
+
+    try {
+        Add-Type -LiteralPath $source -ErrorAction Stop
+        return $true
+    }
+    catch {
+        return $false
+    }
+}
+
+function Test-PcnOtherUiInstanceActivated {
+    # $true when another UI instance is running and was brought to the front.
+    if (-not (Initialize-PcnSingleInstanceType)) {
+        return $false
+    }
+
+    try {
+        return [PcNinja.Shared.PcNinjaSingleInstance]::TryActivateExisting($script:PcnSingleInstanceAppId)
+    }
+    catch {
+        return $false
+    }
+}
+
+function Enter-PcnUiSingleInstance {
+    # $false when another UI instance is running (it was brought to the front).
+    if (-not (Initialize-PcnSingleInstanceType)) {
+        return $true
+    }
+
+    try {
+        $script:PcnSingleInstance = [PcNinja.Shared.PcNinjaSingleInstance]::Acquire($script:PcnSingleInstanceAppId)
+        return ($null -ne $script:PcnSingleInstance)
+    }
+    catch {
+        return $true
+    }
+}
+
 $skipAdminGateForSmoke = ([string]$env:PCNINJA_V2_UI_SMOKE -eq '1')
 if (-not (Test-PcnAdministrator) -and -not $skipAdminGateForSmoke) {
     if ($Mode -eq 'UI') {
+        if (Test-PcnOtherUiInstanceActivated) {
+            exit 0
+        }
+
         Add-Type -AssemblyName System.Windows.Forms
         Show-PcnMessageBox(
             'PcNinja WinUpdate Tool needs administrator privileges. Click OK to relaunch it as Administrator.',
@@ -1776,6 +1834,10 @@ if ($Mode -eq 'CollectLogs') {
     catch {
         Stop-PcnCliError -Message $_.Exception.Message
     }
+}
+
+if ($Mode -eq 'UI' -and -not (Enter-PcnUiSingleInstance)) {
+    exit 0
 }
 
 if ($Mode -eq 'UI') {

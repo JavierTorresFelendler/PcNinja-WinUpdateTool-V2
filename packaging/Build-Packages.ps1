@@ -66,6 +66,8 @@ $msiActionHostExePath = Join-Path $packageRoot 'PcNinja.WinUpdateTool.MsiActionH
 $wxsPath = Join-Path $packagingDir 'PcNinja.WinUpdateTool.wxs'
 $launcherSource = Join-Path $packagingDir 'PortableLauncher.cs'
 $hostSource = Join-Path $packagingDir 'WinUpdateToolHost.cs'
+# Shared PcNinja single-instance guard; keep byte-identical across PcNinja tools.
+$singleInstanceSource = Join-Path (Split-Path -Parent $packagingDir) 'shared\PcNinjaSingleInstance.cs'
 $cliSource = Join-Path $packagingDir 'WinUpdateToolCli.cs'
 $msiActionHostSource = Join-Path $packagingDir 'MsiActionHost.cs'
 $iconPath = Join-Path $packageRoot 'assets\PcNinja.ico'
@@ -285,7 +287,8 @@ if (-not (Test-Path -LiteralPath $powerShellAutomation)) {
     /reference:$powerShellAutomation `
     /reference:System.Windows.Forms.dll `
     /reference:System.Drawing.dll `
-    $hostSource
+    $hostSource `
+    $singleInstanceSource
 
 if ($LASTEXITCODE -ne 0) {
     throw "Branded host compile failed with exit code $LASTEXITCODE."
@@ -369,7 +372,8 @@ $portableCompileArguments = @(
     ("/resource:{0},PcNinjaPortable.Ninja-DMT-header.png" -f (Join-Path $packageRoot 'assets\Ninja-DMT-header.png')),
     ("/resource:{0},PcNinjaPortable.PcNinja.ico" -f (Join-Path $packageRoot 'assets\PcNinja.ico')),
     ("/resource:{0},PcNinjaPortable.PcNinja-SoftAlert.wav" -f (Join-Path $packageRoot 'assets\PcNinja-SoftAlert.wav')),
-    $launcherSource
+    $launcherSource,
+    $singleInstanceSource
 )
 
 & $csc @portableCompileArguments
