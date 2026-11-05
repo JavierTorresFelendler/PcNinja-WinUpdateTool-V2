@@ -157,8 +157,20 @@ function Get-PcnPowershellPath {
 
 function Set-PcnUtf8ConsoleEncoding {
     $utf8 = New-Object System.Text.UTF8Encoding($false)
-    [Console]::OutputEncoding = $utf8
+
+    # Pipeline encoding is process-local and always safe to set.
     $global:OutputEncoding = $utf8
+
+    # [Console]::OutputEncoding calls SetConsoleOutputCP, which throws
+    # "The handle is invalid" when no console is attached (the winexe GUI host
+    # and the portable launcher run this script in-process without a console).
+    # In that case there is no console output to encode, so skip it.
+    try {
+        [Console]::OutputEncoding = $utf8
+    }
+    catch {
+        $null = $_
+    }
 }
 
 function Read-PcnUtf8File {

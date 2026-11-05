@@ -1,6 +1,6 @@
-# PcNinja WinUpdate Tool V2.2.7
+# PcNinja WinUpdate Tool V2.2.8
 
-V2.2.7 fixes Unicode decoding across the update scan process so Hebrew and other non-ASCII update titles remain readable in the Available Updates window and application logs. It retains the V2.2.6 app-update validation, verified downloads, and atomic configuration/state writes.
+V2.2.8 fixes a startup failure introduced in V2.2.7 where the Portable EXE and the installed GUI stopped with "Exception setting OutputEncoding: The handle is invalid." V2.2.7 fixed Unicode decoding across the update scan process so Hebrew and other non-ASCII update titles remain readable in the Available Updates window and application logs. The release retains the V2.2.6 app-update validation, verified downloads, and atomic configuration/state writes.
 
 The Windows Update engine, driver audit behavior, interactive MSI wizard, portable packaging, and branded host behavior remain based on the V2 recovery work.
 
@@ -10,6 +10,12 @@ The Windows Update engine, driver audit behavior, interactive MSI wizard, portab
 - V1 legacy repository: https://github.com/JavierTorresFelendler/PcNinja-WinUpdateTool-V1
 
 Use the V1 repository for the stable V1 download line. Use this repository for V2 stable releases and V2 release candidates.
+
+## New In V2.2.8
+
+- Fixes the Portable EXE and installed GUI failing to start with "Exception setting OutputEncoding: The handle is invalid."
+- Console output encoding is now applied only when a console is attached; the in-process GUI hosts have none. The UTF-8 handling from V2.2.7 is unchanged wherever a console exists.
+- Adds a regression test for the console encoding helper.
 
 ## New In V2.2.7
 
