@@ -2,6 +2,10 @@
 
 This folder is reserved for GitHub Actions workflows.
 
+Active workflow:
+
+- `ci.yml` runs on every pull request, on pushes to `main`, and on manual dispatch. It runs the Pester tests, installs WiX 6, builds the unsigned MSI and Portable EXE with `packaging\Build-Packages.ps1`, and smoke-tests the Portable EXE with no console attached. The built packages, the regenerated `public-release/` folder and `TestResults.xml` are uploaded as a workflow artifact for VM testing.
+
 Planned V2 workflow:
 
 - release.yml

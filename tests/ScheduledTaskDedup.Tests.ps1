@@ -137,6 +137,14 @@ Describe 'PcNinja UTF-8 text files' {
 `$ErrorActionPreference = 'Stop'
 Add-Type -Namespace PcnTest -Name Native -MemberDefinition '[DllImport("kernel32.dll")] public static extern bool FreeConsole();'
 [PcnTest.Native]::FreeConsole() | Out-Null
+# Control: the raw V2.2.7 assignment must throw here, proving no console is attached.
+try {
+    [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding(`$false)
+    `$control = 'CONTROL:no-throw'
+}
+catch {
+    `$control = 'CONTROL:threw'
+}
 try {
     Import-Module '$($module.Replace("'", "''"))' -Force
     Set-PcnUtf8ConsoleEncoding
@@ -145,13 +153,13 @@ try {
 catch {
     `$result = 'FAIL:' + `$_.Exception.Message
 }
-[System.IO.File]::WriteAllText('$($resultPath.Replace("'", "''"))', `$result)
+[System.IO.File]::WriteAllText('$($resultPath.Replace("'", "''"))', `$control + '|' + `$result)
 "@
             $encoded = [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($childScript))
             try {
                 $process = Start-Process -FilePath (Get-PcnPowershellPath) -ArgumentList @('-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $encoded) -WindowStyle Hidden -PassThru -Wait
                 $process.ExitCode | Should Be 0
-                [System.IO.File]::ReadAllText($resultPath) | Should Be 'OK:utf-8'
+                [System.IO.File]::ReadAllText($resultPath) | Should Be 'CONTROL:threw|OK:utf-8'
             }
             finally {
                 Remove-Item -LiteralPath $resultPath -Force -ErrorAction SilentlyContinue
