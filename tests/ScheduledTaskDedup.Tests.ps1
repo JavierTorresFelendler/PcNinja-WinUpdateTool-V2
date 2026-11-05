@@ -127,6 +127,37 @@ Describe 'PcNinja UTF-8 text files' {
             }
         }
 
+        It 'does not throw when no console is attached (GUI host / portable launcher)' {
+            # The winexe hosts run WinUpdateTool.ps1 in-process with no console, where
+            # setting [Console]::OutputEncoding throws "The handle is invalid".
+            # Reproduce that by detaching a child powershell.exe from its console.
+            $module = (Get-Module WinUpdateCore).Path
+            $resultPath = Join-Path ([System.IO.Path]::GetTempPath()) ("pcninja-noconsole-{0}.txt" -f [guid]::NewGuid().ToString('N'))
+            $childScript = @"
+`$ErrorActionPreference = 'Stop'
+Add-Type -Namespace PcnTest -Name Native -MemberDefinition '[DllImport("kernel32.dll")] public static extern bool FreeConsole();'
+[PcnTest.Native]::FreeConsole() | Out-Null
+try {
+    Import-Module '$($module.Replace("'", "''"))' -Force
+    Set-PcnUtf8ConsoleEncoding
+    `$result = 'OK:' + `$OutputEncoding.WebName
+}
+catch {
+    `$result = 'FAIL:' + `$_.Exception.Message
+}
+[System.IO.File]::WriteAllText('$($resultPath.Replace("'", "''"))', `$result)
+"@
+            $encoded = [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($childScript))
+            try {
+                $process = Start-Process -FilePath (Get-PcnPowershellPath) -ArgumentList @('-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $encoded) -WindowStyle Hidden -PassThru -Wait
+                $process.ExitCode | Should Be 0
+                [System.IO.File]::ReadAllText($resultPath) | Should Be 'OK:utf-8'
+            }
+            finally {
+                Remove-Item -LiteralPath $resultPath -Force -ErrorAction SilentlyContinue
+            }
+        }
+
         It 'reads Unicode text from UTF-8 files without a byte order mark' {
             $path = Join-Path ([System.IO.Path]::GetTempPath()) ("pcninja-utf8-{0}.txt" -f [guid]::NewGuid().ToString('N'))
             $expected = [System.Text.RegularExpressions.Regex]::Unescape('\u05E2\u05D1\u05E8\u05D9\u05EA | \u0627\u0644\u0639\u0631\u0628\u064A\u0629 | \u65E5\u672C\u8A9E | Fran\u00E7ais')
