@@ -1,27 +1,11 @@
 # GitHub Workflows
 
-This folder is reserved for GitHub Actions workflows.
+GitHub Actions workflows for the V2 line.
 
-Active workflow:
+Active workflows:
 
 - `ci.yml` runs on every pull request, on pushes to `main`, and on manual dispatch. It runs the Pester tests, installs WiX 6, builds the unsigned MSI and Portable EXE with `packaging\Build-Packages.ps1`, and smoke-tests the Portable EXE with no console attached. The built packages, the regenerated `public-release/` folder and `TestResults.xml` are uploaded as a workflow artifact for VM testing.
 
-Planned V2 workflow:
+- `release.yml` is run manually from `main` and publishes an official release. It checks the version and tag, calls `ci.yml`, creates the GitHub release from the exact artifact CI tested, and pushes the regenerated `public-release/` metadata to a `release/<tag>-metadata` branch to merge afterwards. See [docs/v2/RELEASE-PROCESS.md](../../docs/v2/RELEASE-PROCESS.md).
 
-- release.yml
-
-Expected responsibilities:
-
-- Run syntax checks.
-- Build MSI and Portable EXE.
-- Validate MSI metadata.
-- Generate hashes.
-- Generate update-manifest.json.
-- Package public release artifacts.
-- Upload release artifacts to GitHub Releases.
-
-The release workflow should call the existing packaging script instead of replacing it:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\packaging\Build-Packages.ps1
-```
+Signing is not automated yet. `Build-Packages.ps1` signs only when a certificate is passed explicitly, and releases are currently unsigned, as before.

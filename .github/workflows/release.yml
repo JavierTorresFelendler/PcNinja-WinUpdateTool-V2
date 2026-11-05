@@ -1,0 +1,149 @@
+name: Release
+
+# Publishes an official GitHub release from main. See docs/v2/RELEASE-PROCESS.md.
+#
+# 1. preflight - must run from main, the typed version must match version.json,
+#                and the release tag must not exist yet.
+# 2. build     - the CI workflow (Pester, package build, no-console smoke test).
+# 3. publish   - creates the GitHub release from that exact CI artifact, then
+#                pushes the regenerated public-release/ metadata to a
+#                release/<tag>-metadata branch. Merging that branch into main is
+#                what offers the update to installed copies, so it always
+#                happens after the release assets exist.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Public label to release. Must match version.json publicLabel (for example V2.2.8).'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.check.outputs.tag }}
+      label: ${{ steps.check.outputs.label }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check branch, version and tag
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Releases are published from main only (got $GITHUB_REF)."; exit 1
+          fi
+          label=$(python3 -c "import json;print(json.load(open('version.json',encoding='utf-8-sig'))['publicLabel'])")
+          if [ "$REQUESTED" != "$label" ]; then
+            echo "::error::Requested '$REQUESTED' but version.json says '$label'."; exit 1
+          fi
+          tag=$(echo "v${label#V}" | tr '[:upper:]' '[:lower:]')
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+            echo "::error::Tag $tag already exists."; exit 1
+          fi
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::Release $tag already exists."; exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "label=$label" >> "$GITHUB_OUTPUT"
+          echo "Releasing $label as $tag from $GITHUB_SHA"
+
+  build:
+    needs: preflight
+    uses: ./.github/workflows/ci.yml
+
+  publish:
+    needs: [preflight, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ needs.preflight.outputs.tag }}
+      LABEL: ${{ needs.preflight.outputs.label }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download tested build
+        uses: actions/download-artifact@v4
+        with:
+          name: PcNinja-WinUpdateTool-unsigned-${{ github.sha }}
+          path: build
+
+      - name: Verify artifact matches its manifest
+        run: |
+          set -euo pipefail
+          cd build
+          python3 - <<'PY'
+          import hashlib, json, os, sys
+          label, tag = os.environ['LABEL'], os.environ['TAG']
+          m = json.load(open('public-release/update-manifest.json', encoding='utf-8-sig'))
+          ver = json.load(open('../version.json', encoding='utf-8-sig'))['version']
+          errors = []
+          if m['publicLabel'] != label: errors.append(f"manifest publicLabel {m['publicLabel']} != {label}")
+          if m['version'] != ver: errors.append(f"manifest version {m['version']} != {ver}")
+          for kind in ('msi', 'portable'):
+              entry = m[kind]
+              path = os.path.join('public-release', entry['fileName'])
+              digest = hashlib.sha256(open(path, 'rb').read()).hexdigest().upper()
+              if digest != entry['sha256'].upper(): errors.append(f"{kind} hash mismatch for {path}")
+              if f"/releases/download/{tag}/{entry['fileName']}" not in entry['url']: errors.append(f"{kind} url does not target {tag}: {entry['url']}")
+          if not os.path.exists(f'public-release/{label}-RELEASE-NOTES.txt'): errors.append('release notes missing')
+          if errors:
+              print('\n'.join(errors)); sys.exit(1)
+          print('Manifest, hashes and URLs verified.')
+          PY
+
+      - name: Create GitHub release
+        run: |
+          set -euo pipefail
+          cd build
+          # Release notes are written with a UTF-8 BOM by Windows PowerShell; strip it for the release body.
+          sed '1s/^\xEF\xBB\xBF//' "public-release/${LABEL}-RELEASE-NOTES.txt" > "$RUNNER_TEMP/notes.txt"
+          gh release create "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "PcNinja WinUpdate Tool ${LABEL}" \
+            --notes-file "$RUNNER_TEMP/notes.txt" \
+            public-release/WinUpdate.Tool.by.PcNinja.msi \
+            public-release/WinUpdate.Tool.by.PcNinja.exe \
+            public-release/update-manifest.json \
+            public-release/SHA256SUMS.txt \
+            public-release/PUBLIC-RELEASE-README.txt \
+            public-release/SIGNING-INSTRUCTIONS.txt \
+            "public-release/${LABEL}-RELEASE-NOTES.txt" \
+            WinUpdate.Tool.by.PcNinja.Public.Release.zip \
+            WinUpdate.Tool.by.PcNinja.Public.Release.zip.sha256.txt
+
+      - name: Push release metadata branch
+        run: |
+          set -euo pipefail
+          branch="release/${TAG}-metadata"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898+github-actions[bot]@users.noreply.github.com'
+          git checkout -b "$branch"
+          rm -rf public-release
+          cp -r build/public-release public-release
+          # *.msi and *.exe are gitignored, so only the text metadata is committed.
+          git add -A public-release
+          git commit -m "Publish ${LABEL} release metadata" -m "Generated by the Release workflow run ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID} from ${GITHUB_SHA}."
+          git push origin "$branch"
+          {
+            echo "### ${LABEL} released"
+            echo "- Release: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${TAG}"
+            echo "- Next step: merge \`${branch}\` into main to offer the update to installed copies."
+          } >> "$GITHUB_STEP_SUMMARY"

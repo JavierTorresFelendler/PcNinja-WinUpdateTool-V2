@@ -3,19 +3,23 @@ name: CI
 # Runs the Pester tests, builds the unsigned MSI and Portable EXE with the
 # existing packaging script, and smoke-tests the Portable EXE with no console
 # attached (the condition that broke V2.2.7 startup). Built packages are
-# uploaded as a workflow artifact for VM testing.
+# uploaded as a workflow artifact for VM testing. release.yml calls this
+# workflow and publishes exactly the artifact it produced.
 
 on:
   pull_request:
   push:
     branches: [main]
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  # github.workflow is the caller's name under workflow_call, so a release
+  # build never cancels (or is cancelled by) a push-triggered CI run on main.
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -93,4 +97,6 @@ jobs:
             dist/*.msi
             dist/*.exe
             public-release/
+            WinUpdate.Tool.by.PcNinja.Public.Release.zip
+            WinUpdate.Tool.by.PcNinja.Public.Release.zip.sha256.txt
             TestResults.xml
