@@ -16,6 +16,7 @@ Use the V1 repository for the stable V1 download line. Use this repository for V
 - Fixes the Portable EXE and installed GUI failing to start with "Exception setting OutputEncoding: The handle is invalid."
 - Console output encoding is now applied only when a console is attached; the in-process GUI hosts have none. The UTF-8 handling from V2.2.7 is unchanged wherever a console exists.
 - Adds a regression test for the console encoding helper.
+- Adds Windows CI and a release workflow that publishes only packages that passed tests. See [docs/v2/RELEASE-PROCESS.md](docs/v2/RELEASE-PROCESS.md) and the [incident review](docs/v2/incidents/2026-11-05-v2.2.7-startup-failure.md).
 
 ## New In V2.2.7
 
