@@ -34,7 +34,7 @@ jobs:
       label: ${{ steps.check.outputs.label }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Check branch, version and tag
         id: check
@@ -76,10 +76,10 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Download tested build
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: PcNinja-WinUpdateTool-unsigned-${{ github.sha }}
           path: build
